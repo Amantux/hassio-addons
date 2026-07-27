@@ -119,5 +119,5 @@ slug: claude_desktop_dev
 tmpfs: true
 udev: true
 url: https://github.com/alexbelgium/hassio-addons
-version: "1.35-dev2"
+version: "1.35-dev3"
 video: true
