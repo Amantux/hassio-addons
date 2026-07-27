@@ -218,7 +218,7 @@ RUN curl -fsSL --retry 3 --retry-delay 2 \
     rm /ha_automodules.sh
 
 # Manual apps
-ENV PACKAGES="nginx"
+ENV PACKAGES="nginx acl"
 
 # Automatic apps & bashio
 RUN curl -fsSL --retry 3 --retry-delay 2 \

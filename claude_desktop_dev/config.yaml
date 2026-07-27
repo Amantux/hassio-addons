@@ -15,8 +15,8 @@ environment:
   AUTO_GPU: "1"
   FM_HOME: /data/data
   HOME: /data/data
-  PGID: "1000"
-  PUID: "1000"
+  PGID: "65000"
+  PUID: "65000"
   SELKIES_AUDIO_ENABLED: "false"
   SELKIES_ENABLE_SHARING: "false"
   SELKIES_FRAMERATE: "15"
@@ -43,8 +43,8 @@ name: Claude Desktop (Dev)
 options:
   env_vars: []
   DNS_server: 8.8.8.8
-  PGID: 1000
-  PUID: 1000
+  PGID: 65000
+  PUID: 65000
   data_location: /data/data
   additional_apps: ""
   additional_pip: ""
@@ -119,5 +119,5 @@ slug: claude_desktop_dev
 tmpfs: true
 udev: true
 url: https://github.com/alexbelgium/hassio-addons
-version: "1.35-dev3"
+version: "1.35-dev4"
 video: true
