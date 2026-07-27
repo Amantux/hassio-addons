@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(**/secrets.yaml)",
+      "Read(**/.storage)",
+      "Read(**/.storage/**)",
+      "Read(/homeassistant/secrets.yaml)",
+      "Read(/homeassistant/.storage)",
+      "Read(/homeassistant/.storage/**)",
+      "Read(/config/secrets.yaml)",
+      "Read(/config/.storage)",
+      "Read(/config/.storage/**)",
+      "Read(/homeassistant_config/secrets.yaml)",
+      "Read(/homeassistant_config/.storage)",
+      "Read(/homeassistant_config/.storage/**)",
+
+      "Edit(**/secrets.yaml)",
+      "Edit(**/.storage/**)",
+      "Edit(/homeassistant/secrets.yaml)",
+      "Edit(/homeassistant/.storage/**)",
+      "Edit(/config/secrets.yaml)",
+      "Edit(/config/.storage/**)",
+      "Edit(/homeassistant_config/secrets.yaml)",
+      "Edit(/homeassistant_config/.storage/**)",
+
+      "Write(**/secrets.yaml)",
+      "Write(**/.storage/**)",
+      "Write(/homeassistant/secrets.yaml)",
+      "Write(/homeassistant/.storage/**)",
+      "Write(/config/secrets.yaml)",
+      "Write(/config/.storage/**)",
+      "Write(/homeassistant_config/secrets.yaml)",
+      "Write(/homeassistant_config/.storage/**)"
+    ]
+  }
+}
