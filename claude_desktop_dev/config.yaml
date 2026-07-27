@@ -1,6 +1,5 @@
 arch:
   - aarch64
-  - amd64
 audio: true
 boot: auto
 description: "Claude Desktop (Dev) — fork with rw filesystem access to /homeassistant config tree (automations, scripts, custom_components). Based on Claude Desktop + Headroom, RTK, TokenSave."
@@ -27,6 +26,7 @@ environment:
   SELKIES_USE_BROWSER_CURSORS: "true"
   START_DOCKER: "false"
   TITLE: Claude Desktop
+image: ghcr.io/amantux/claude_desktop_dev-{arch}
 ingress: true
 init: false
 hassio_api: true
@@ -119,5 +119,5 @@ slug: claude_desktop_dev
 tmpfs: true
 udev: true
 url: https://github.com/alexbelgium/hassio-addons
-version: "1.35-dev"
+version: "1.35-dev2"
 video: true

@@ -1,0 +1,116 @@
+# Build the Claude Desktop (Dev) add-on image for Raspberry Pi (aarch64) and
+# push it to GHCR, so Home Assistant pulls a prebuilt image instead of building
+# the Dockerfile locally on the Pi. The image is built from THIS fork, so it
+# includes the baked-in managed-settings deny rules.
+---
+name: Build add-on image
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "claude_desktop_dev/**"
+      - ".github/workflows/build.yaml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build aarch64 image
+    runs-on: ubuntu-24.04-arm   # native arm64 runner — no QEMU emulation
+    permissions:
+      contents: read
+      packages: write
+    env:
+      ADDON: claude_desktop_dev
+      ARCH: aarch64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install PyYAML
+        run: python3 -m pip install --disable-pip-version-check pyyaml
+
+      - name: Read add-on metadata
+        id: info
+        env:
+          REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA_VALUE: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import yaml
+
+          addon = os.environ["ADDON"]
+          arch = os.environ["ARCH"]
+          repository = os.environ["REPOSITORY"]
+          github_sha = os.environ["GITHUB_SHA_VALUE"]
+          addon_dir = Path(addon)
+          out = Path(os.environ["GITHUB_OUTPUT"])
+
+          config = yaml.safe_load((addon_dir / "config.yaml").read_text(encoding="utf-8")) or {}
+          build = json.loads((addon_dir / "build.json").read_text(encoding="utf-8"))
+
+          build_from = str((build.get("build_from") or {}).get(arch) or "").strip()
+          if not build_from:
+              raise SystemExit(f"No build_from for arch {arch} in build.json")
+
+          image = str(config.get("image") or "").strip().replace("{arch}", arch)
+          version = str(config.get("version") or "").strip()
+          name = str(config.get("name") or "").strip()
+          description = str(config.get("description") or "").strip()
+          url = str(config.get("url") or "").strip()
+          build_date = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+          labels = [
+              f"io.hass.name={name}",
+              f"io.hass.description={description}",
+              "io.hass.type=addon",
+              f"io.hass.version={version}",
+          ]
+          if url:
+              labels.append(f"io.hass.url={url}")
+
+          build_args = [
+              f"BUILD_FROM={build_from}",
+              f"BUILD_ARCH={arch}",
+              f"BUILD_VERSION={version}",
+              f"BUILD_DATE={build_date}",
+              f"BUILD_DESCRIPTION={description}",
+              f"BUILD_NAME={name}",
+              f"BUILD_REF={github_sha}",
+              f"BUILD_REPOSITORY={repository}",
+          ]
+
+          def write(key, value):
+              with out.open("a", encoding="utf-8") as fh:
+                  print(f"{key}<<__EOF__", file=fh)
+                  print(value, file=fh)
+                  print("__EOF__", file=fh)
+
+          write("image", image)
+          write("version", version)
+          write("dockerfile", str(addon_dir / "Dockerfile"))
+          write("labels", "\n".join(labels))
+          write("build_args", "\n".join(build_args))
+          PY
+
+      - name: Build & push ${{ env.ARCH }} image
+        uses: home-assistant/builder/actions/build-image@2026.06.0
+        with:
+          arch: ${{ env.ARCH }}
+          context: ./${{ env.ADDON }}
+          file: ${{ steps.info.outputs.dockerfile }}
+          image: ${{ steps.info.outputs.image }}
+          image-tags: |
+            ${{ steps.info.outputs.version }}
+            latest
+          version: ${{ steps.info.outputs.version }}
+          push: "true"
+          cosign: "false"
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          labels: ${{ steps.info.outputs.labels }}
+          build-args: ${{ steps.info.outputs.build_args }}
