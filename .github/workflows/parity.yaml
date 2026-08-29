@@ -1,0 +1,47 @@
+# The CM4 add-on is a FORK of the dev add-on (add-on config has no per-arch
+# `devices:` syntax, so a build variant is not possible). Forks drift: a fix
+# lands in the parent and is silently missing from the child. This job makes
+# that a build failure instead of a support ticket.
+---
+name: Add-on parity
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "claude_desktop_dev/**"
+      - "claude_desktop_cm4/**"
+      - "scripts/check_addon_parity.py"
+      - ".github/workflows/parity.yaml"
+  pull_request:
+    paths:
+      - "claude_desktop_dev/**"
+      - "claude_desktop_cm4/**"
+      - "scripts/check_addon_parity.py"
+      - ".github/workflows/parity.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    name: dev vs cm4 parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install --no-cache-dir pyyaml
+
+      - name: Show declared differences
+        run: python3 scripts/check_addon_parity.py --list
+
+      - name: Check for undeclared drift
+        run: python3 scripts/check_addon_parity.py
