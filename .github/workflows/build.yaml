@@ -1,4 +1,4 @@
-# Build the Claude Desktop (Dev) add-on image for Raspberry Pi (aarch64) and
+# Build the Claude Desktop add-on images for Raspberry Pi (aarch64) and
 # push it to GHCR, so Home Assistant pulls a prebuilt image instead of building
 # the Dockerfile locally on the Pi. The image is built from THIS fork, so it
 # includes the baked-in managed-settings deny rules.
@@ -10,18 +10,27 @@ on:
     branches: [master]
     paths:
       - "claude_desktop_dev/**"
+      - "claude_desktop_cm4/**"
       - ".github/workflows/build.yaml"
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build aarch64 image
+    name: Build ${{ matrix.addon }} (aarch64)
     runs-on: ubuntu-24.04-arm   # native arm64 runner — no QEMU emulation
     permissions:
       contents: read
       packages: write
+    strategy:
+      # Independent images: one add-on failing to build must not withhold the
+      # other, or a broken variant silently blocks a working one from shipping.
+      fail-fast: false
+      matrix:
+        addon:
+          - claude_desktop_dev   # amd64/aarch64 desktop build
+          - claude_desktop_cm4   # Home Assistant Yellow / Raspberry Pi CM4
     env:
-      ADDON: claude_desktop_dev
+      ADDON: ${{ matrix.addon }}
       ARCH: aarch64
     steps:
       - uses: actions/checkout@v4
