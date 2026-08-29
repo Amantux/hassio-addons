@@ -1,0 +1,43 @@
+#!/usr/bin/with-contenv bashio
+# Auto-start a Claude Code Remote Control session named "Home Assistant" on boot, so it
+# shows up in claude.ai/code and the Claude mobile app and can be driven remotely.
+#
+# HARD LIMITS (Anthropic auth design — not something this add-on can work around):
+#  * Remote Control needs a full-scope claude.ai login (Pro/Max/Team/Enterprise). An API
+#    key / CLAUDE_CODE_OAUTH_TOKEN CANNOT establish it. So the FIRST time, a human must run
+#    `claude` in a terminal and `/login` once. This service waits (below) until that's done.
+#  * The login token does NOT auto-refresh. When it nears expiry Claude warns
+#    "Your login expires in N days · run /login"; once it expires the session stops and
+#    must be renewed by running `/login` again. So this is "auto-start after login", not
+#    "unattended forever".
+set +e
+
+CREDS="${HOME}/.claude/.credentials.json"
+BACKOFF=120
+
+# Prefer the HA config tree as the working dir so the remote session operates on it.
+WORKDIR=/homeassistant
+[ -d "$WORKDIR" ] || WORKDIR="${HOME}"
+
+if [ ! -f "$CREDS" ]; then
+    bashio::log.info "svc-claude-remote: no Claude login found ($CREDS). Open a terminal, run 'claude', and '/login' once (needs a claude.ai subscription). Retrying in ${BACKOFF}s."
+    sleep "$BACKOFF"
+    exit 1
+fi
+
+cd "$WORKDIR" 2> /dev/null || cd "${HOME}" || true
+bashio::log.info "svc-claude-remote: starting Remote Control session 'Home Assistant' (cwd=$(pwd))"
+
+# Server-mode Remote Control is documented for terminal use; headless/TTY-less behavior is
+# not documented upstream. Wrap in a PTY via util-linux `script` when available to satisfy
+# any terminal requirement; fall back to a direct launch otherwise.
+if command -v script > /dev/null 2>&1; then
+    s6-setuidgid abc script -qec 'exec claude remote-control --name "Home Assistant"' /dev/null
+else
+    s6-setuidgid abc claude remote-control --name "Home Assistant"
+fi
+rc=$?
+
+bashio::log.warning "svc-claude-remote: Remote Control session ended (rc=${rc}). If the login expired, run '/login' again in a terminal. Restarting in ${BACKOFF}s."
+sleep "$BACKOFF"
+exit "$rc"

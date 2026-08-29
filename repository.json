@@ -1,6 +1,6 @@
 {
-  "name": "HA Add-ons by alexbelgium",
+  "name": "Alex's Home Assistant Add-ons",
   "udev": true,
-  "url": "https://github.com/alexbelgium/hassio-addons",
-  "maintainer": "alexbelgium"
+  "url": "https://github.com/Amantux/hassio-addons",
+  "maintainer": "Amantux (Alex) <https://github.com/Amantux>"
 }

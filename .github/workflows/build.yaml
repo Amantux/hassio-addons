@@ -1,4 +1,4 @@
-# Build the Claude Desktop (Dev) add-on image for Raspberry Pi (aarch64) and
+# Build the Claude Desktop add-on images for Raspberry Pi (aarch64) and
 # push it to GHCR, so Home Assistant pulls a prebuilt image instead of building
 # the Dockerfile locally on the Pi. The image is built from THIS fork, so it
 # includes the baked-in managed-settings deny rules.
@@ -10,18 +10,48 @@ on:
     branches: [master]
     paths:
       - "claude_desktop_dev/**"
+      - "claude_desktop_cm4/**"
+      - "scripts/**"
       - ".github/workflows/build.yaml"
   workflow_dispatch:
 
 jobs:
+  lint:
+    # Fail in seconds on shell/structure bugs instead of after a multi-minute
+    # image build. A CM4 build once burned 5.5 minutes on the arm64 runner to
+    # report a dangling `&&` — this catches that class in under a second.
+    name: Dockerfile + parity checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --no-cache-dir pyyaml
+      - name: Validate Dockerfile shell
+        run: python3 scripts/check_dockerfiles.py
+      - name: Check dev/cm4 parity
+        run: python3 scripts/check_addon_parity.py
+
   build:
-    name: Build aarch64 image
+    name: Build ${{ matrix.addon }} (aarch64)
+    needs: lint          # do not pay for a build the static checks already reject
     runs-on: ubuntu-24.04-arm   # native arm64 runner — no QEMU emulation
     permissions:
       contents: read
       packages: write
+    strategy:
+      # Independent images: one add-on failing to build must not withhold the
+      # other, or a broken variant silently blocks a working one from shipping.
+      fail-fast: false
+      matrix:
+        addon:
+          - claude_desktop_dev   # amd64/aarch64 desktop build
+          - claude_desktop_cm4   # Home Assistant Yellow / Raspberry Pi CM4
     env:
-      ADDON: claude_desktop_dev
+      ADDON: ${{ matrix.addon }}
       ARCH: aarch64
     steps:
       - uses: actions/checkout@v4
