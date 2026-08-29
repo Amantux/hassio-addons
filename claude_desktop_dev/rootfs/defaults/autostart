@@ -14,15 +14,22 @@
 # Headroom is intentionally not injected into the Desktop process: Claude Desktop
 # force-overrides ANTHROPIC_BASE_URL (headroom #869), so Desktop uses the registered Headroom
 # MCP tools instead.
-# Claude Desktop resolves the Claude Code CLI from PATH. /usr/local/bin precedes
-# /usr/bin, so it finds this add-on's `claude` wrapper (a bashio shell script)
-# instead of the real ELF binary at /usr/bin/claude, and reports "The Claude Code
-# binary is missing or damaged." The wrapper already applies exactly this fix for
-# itself when handing off to Headroom -- it is the same shadowing problem, hit
-# from the outside. Put /usr/bin first for the Desktop process only; interactive
-# shells keep resolving `claude` to the wrapper, so permission_mode and Headroom
-# wrapping are unaffected. Permission mode is additionally written into
-# ~/.claude/settings.json by 83-claude_permissions.sh, so it does not depend on
-# the wrapper's CLI arguments either.
-exec env PATH="/usr/bin:/bin:/usr/local/bin:${PATH}" \
+# Point Claude Desktop at the Claude Code binary this image already installs.
+#
+# Desktop does NOT resolve `claude` from PATH. It manages its own pinned Claude
+# Code build, downloading it into <userData>/claude-code and running that copy;
+# when that copy is absent or not executable it reports "The Claude Code binary
+# is missing or damaged." In this add-on userData lives under HOME=/data/data,
+# so the download has to succeed inside add-on storage on every install and
+# survive restarts -- which is exactly what was failing.
+#
+# CLAUDE_CODE_LOCAL_BINARY is Desktop's supported override: initLocalBinary()
+# checks the path for X_OK and, if it passes, uses it instead of the managed
+# download ("[CCD] LOCAL OVERRIDE: Using local binary at ..."). /usr/bin/claude
+# is the claude-code apt package's native binary, already verified executable at
+# build time, so this removes the download from the startup path entirely.
+#
+# It must be the REAL binary, not /usr/local/bin/claude: that is this add-on's
+# bashio wrapper, and Desktop needs an executable it can spawn directly.
+exec env CLAUDE_CODE_LOCAL_BINARY=/usr/bin/claude \
     claude-desktop --no-sandbox --disable-dev-shm-usage --password-store=basic

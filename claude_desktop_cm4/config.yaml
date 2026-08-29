@@ -123,5 +123,5 @@ slug: claude_desktop_cm4
 tmpfs: true
 udev: true
 url: https://github.com/alexbelgium/hassio-addons
-version: 1.35-dev5
+version: 1.35-dev6
 video: true
