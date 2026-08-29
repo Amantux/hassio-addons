@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.35-dev5
+
+Fix "The Claude Code binary is missing or damaged." Claude Desktop resolves the
+Claude Code CLI from PATH, and `/usr/local/bin` precedes `/usr/bin`, so it found
+this add-on's `claude` wrapper (a bashio shell script) instead of the real binary
+at `/usr/bin/claude`. Desktop now launches with `/usr/bin` ahead of
+`/usr/local/bin`, the same shadowing fix the wrapper already applies to itself
+when handing off to Headroom.
+
+Interactive shells are unchanged: typing `claude` in a terminal still resolves to
+the wrapper, so `permission_mode` and Headroom wrapping behave exactly as before.
+
 ## 1.35-dev4
 
 Initial release of the CM4 variant, for Home Assistant Yellow and other
