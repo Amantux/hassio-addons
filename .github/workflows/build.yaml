@@ -11,12 +11,33 @@ on:
     paths:
       - "claude_desktop_dev/**"
       - "claude_desktop_cm4/**"
+      - "scripts/**"
       - ".github/workflows/build.yaml"
   workflow_dispatch:
 
 jobs:
+  lint:
+    # Fail in seconds on shell/structure bugs instead of after a multi-minute
+    # image build. A CM4 build once burned 5.5 minutes on the arm64 runner to
+    # report a dangling `&&` — this catches that class in under a second.
+    name: Dockerfile + parity checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --no-cache-dir pyyaml
+      - name: Validate Dockerfile shell
+        run: python3 scripts/check_dockerfiles.py
+      - name: Check dev/cm4 parity
+        run: python3 scripts/check_addon_parity.py
+
   build:
     name: Build ${{ matrix.addon }} (aarch64)
+    needs: lint          # do not pay for a build the static checks already reject
     runs-on: ubuntu-24.04-arm   # native arm64 runner — no QEMU emulation
     permissions:
       contents: read

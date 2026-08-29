@@ -167,7 +167,7 @@ RUN set -eux; \
 COPY --from=rtk-builder /out/rtk /usr/local/bin/rtk
 COPY --from=tokensave-builder /out/bin/tokensave /usr/local/bin/tokensave
 RUN /usr/local/bin/rtk --version && \
-    /usr/local/bin/tokensave --version && \
+    /usr/local/bin/tokensave --version
 # Install only the Headroom proxy, code-compression, and MCP features used by this add-on,
 # plus mcp-proxy (stdio->HTTP bridge for the Home Assistant MCP server) and uv (fast
 # installer used for the additional_pip option). The `proxy` extra already ships the ONNX
