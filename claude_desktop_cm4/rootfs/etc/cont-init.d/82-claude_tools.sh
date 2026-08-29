@@ -3,11 +3,37 @@
 set -e
 set -o pipefail
 
+# cont-init.d runs as root, but every tool below is invoked through
+# run_as_runtime_user (uid abc / the configured PUID). On a FRESH install this
+# directory does not exist yet, so a bare `mkdir -p` here created it root-owned
+# and the tools then failed to write into it:
+#
+#   tokensave: failed to write .../.claude/settings.json.new: Permission denied
+#   rtk:       Failed to create temp file in .../.claude: Permission denied
+#
+# 20-folders.sh chowns $HOME recursively, but it runs before this script, so it
+# cannot cover a directory this script is about to create. 84-claude_runtime_
+# ownership.sh does fix it — after these writes have already failed, which is
+# why the integration silently self-healed on the SECOND boot only.
+#
+# Create it as the runtime identity so the very first boot is correct. The late
+# sweep in 84 stays as a safety net for anything else re-owned in between.
+RUNTIME_UID="$(id -u abc)"
+RUNTIME_GID="$(id -g abc)"
 mkdir -p "$HOME/.claude"
+chown "${RUNTIME_UID}:${RUNTIME_GID}" "$HOME/.claude" \
+    || bashio::log.warning "Unable to set runtime ownership on $HOME/.claude"
 CLAUDE_MD="$HOME/.claude/CLAUDE.md"
 
 run_as_runtime_user() {
     s6-setuidgid abc env HOME="$HOME" "$@"
+}
+
+# Any directory this script creates as root before handing work to
+# run_as_runtime_user needs the same treatment; use this rather than a bare
+# mkdir so the class of bug above cannot come back.
+mkdir_as_runtime_user() {
+    mkdir -p "$1" && chown "${RUNTIME_UID}:${RUNTIME_GID}" "$1" 2> /dev/null || true
 }
 
 # Managed, idempotent guidance block in the user's global CLAUDE.md, delimited by
@@ -20,7 +46,7 @@ manage_claude_md_block() {
     if [ "$action" = "add" ]; then
         if ! { [ -f "$CLAUDE_MD" ] && grep -qF "$begin" "$CLAUDE_MD"; }; then
             bashio::log.info "Adding ${name} guidance to CLAUDE.md"
-            mkdir -p "$(dirname "$CLAUDE_MD")"
+            mkdir_as_runtime_user "$(dirname "$CLAUDE_MD")"
             {
                 [ -s "$CLAUDE_MD" ] && printf '\n'
                 printf '%s\n' "$begin"

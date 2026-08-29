@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.35-dev7
+
+Fix a first-boot ownership race that left the Claude Code integration silently
+half-configured.
+
+cont-init.d runs as root, but the tooling in 82-claude_tools.sh runs as the
+`abc` runtime user (the configured PUID, 65000 on a stock install). On a FRESH
+install `$HOME/.claude` did not exist, so that script created it root-owned and
+the tools could not write into it:
+
+    tokensave: failed to write .../.claude/settings.json.new: Permission denied
+    rtk:       Failed to create temp file in .../.claude: Permission denied
+
+tokensave landed its MCP server and hooks in `.claude.json` (a file in an
+already-chowned directory) but never wrote `settings.json`; rtk installed no
+hook and no RTK.md. 20-folders.sh chowns $HOME recursively but runs earlier, so
+it could not cover a directory created afterwards, and the corrective sweep in
+84-claude_runtime_ownership.sh runs after the failed writes — which is why the
+integration repaired itself on the SECOND boot and looked like a fluke.
+
+`$HOME/.claude` is now created with the runtime identity, derived from
+`id -u abc` so it follows a customised PUID rather than assuming 1000. The late
+sweep in 84 is retained: 83 still writes settings.json as root by design.
+
+Also reverts the CLAUDE_CODE_LOCAL_BINARY override added in 1.35-dev6. Reading
+the shipped app bundle showed the constructor only reads that variable and
+discards it, and a headless run confirmed no LOCAL OVERRIDE line is ever logged,
+so it had no effect.
+
+
 ## 1.35-dev6
 
 Fix "The Claude Code binary is missing or damaged."
